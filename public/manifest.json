@@ -1,0 +1,21 @@
+{
+  "short_name": "D-Chemistry",
+  "name": "D-Chemistry | DJ Sir",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#F5F2EB",
+  "theme_color": "#2D4030",
+  "display": "standalone",
+  "orientation": "portrait"
+}
