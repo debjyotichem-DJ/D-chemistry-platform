@@ -1,15 +1,3 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@layer utilities {
-  .scale-in {
-    animation: scaleIn 4000ms infinite ease-in-out;
-  }
-}
-
-@keyframes scaleIn {
-  0% { transform: scale(1); opacity: 0.9; }
-  50% { transform: scale(1.35); opacity: 1; }
-  100% { transform: scale(1); opacity: 0.9; }
-}
