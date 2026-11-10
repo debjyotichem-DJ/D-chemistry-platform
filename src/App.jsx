@@ -2,21 +2,22 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Play, BookOpen, MessageSquare, Compass, Shield, Sparkles, Send,
   HelpCircle, ChevronRight, CheckCircle, ExternalLink, RefreshCw, 
-  Search, Lock, Heart, LogOut, Plus, Trash2, Globe, Key, AlertCircle
+  Search, Lock, Key, AlertCircle, Heart, LogOut, Plus, Trash2, Globe, Eye, EyeOff
 } from 'lucide-react';
 
 const ASTRO_THEMES = {
-  w1: { id: "w1", name: "Sage & Alabaster", bg: "#F5F2EB", card: "#FFFFFF", border: "#E4DEC9", primary: "#2D4030", hover: "#202E23", text: "#2C332D", subText: "#5D6B5E", accent: "#EAE3D2", tag: "bg-[#2D4030] text-white" },
-  w2: { id: "w2", name: "Serene Lavender", bg: "#F4F3F7", card: "#FFFFFF", border: "#E2DFE9", primary: "#3E3B52", hover: "#2C2A3B", text: "#2D2A38", subText: "#656175", accent: "#E7E4EF", tag: "bg-[#3E3B52] text-white" },
-  w3: { id: "w3", name: "Warm Peach & Sand", bg: "#F7F3EE", card: "#FFFFFF", border: "#EADBCE", primary: "#4A3B32", hover: "#362A23", text: "#332A24", subText: "#73645A", accent: "#EFE5DC", tag: "bg-[#4A3B32] text-white" },
-  w4: { id: "w4", name: "Sky Breeze & Mist", bg: "#F1F5F7", card: "#FFFFFF", border: "#D8E2E6", primary: "#2C3E47", hover: "#1F2C33", text: "#223138", subText: "#576A73", accent: "#E0EAF0", tag: "bg-[#2C3E47] text-white" }
+  w1: { id: "w1", name: "Sage & Alabaster", bg: "#F5F2EB", card: "#FFFFFF", border: "#E4DEC9", primary: "#2D4030", hover: "#202E23", text: "#2C332D", subText: "#5D6B5E", accent: "#EAE3D2" },
+  w2: { id: "w2", name: "Serene Lavender", bg: "#F4F3F7", card: "#FFFFFF", border: "#E2DFE9", primary: "#3E3B52", hover: "#2C2A3B", text: "#2D2A38", subText: "#656175", accent: "#E7E4EF" },
+  w3: { id: "w3", name: "Warm Peach & Sand", bg: "#F7F3EE", card: "#FFFFFF", border: "#EADBCE", primary: "#4A3B32", hover: "#362A23", text: "#332A24", subText: "#73645A", accent: "#EFE5DC" },
+  w4: { id: "w4", name: "Sky Breeze & Mist", bg: "#F1F5F7", card: "#FFFFFF", border: "#D8E2E6", primary: "#2C3E47", hover: "#1F2C33", text: "#223138", subText: "#576A73", accent: "#E0EAF0" }
 };
 
+// Initial authorized students with their private PINs
 const INITIAL_WHITELIST = [
-  { id: 1, name: "Debajyoti Haldar", phone: "8918444186", board: "Faculty", grade: "Faculty Admin", role: "admin", status: "active" },
-  { id: 2, name: "Sourav Paul", phone: "9876543210", board: "ICSE", grade: "Class 9", role: "student", status: "active" },
-  { id: 3, name: "Ananya Roy", phone: "8765432109", board: "ISC", grade: "Class 11", role: "student", status: "active" },
-  { id: 4, name: "Rahul Sen", phone: "7654321098", board: "CBSE", grade: "Class 10", role: "student", status: "active" }
+  { id: 1, name: "Debajyoti Haldar", phone: "8918444186", pin: "4186", board: "Faculty", grade: "Faculty Admin", role: "admin", status: "active" },
+  { id: 2, name: "Sourav Paul", phone: "9876543210", pin: "3210", board: "ICSE", grade: "Class 9", role: "student", status: "active" },
+  { id: 3, name: "Ananya Roy", phone: "8765432109", pin: "2109", board: "ISC", grade: "Class 11", role: "student", status: "active" },
+  { id: 4, name: "Rahul Sen", phone: "7654321098", pin: "1098", board: "CBSE", grade: "Class 10", role: "student", status: "active" }
 ];
 
 const INITIAL_MODULES = [
@@ -86,26 +87,34 @@ export default function DChemistryApp() {
   const [currentWeekTheme, setCurrentWeekTheme] = useState('w1');
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   
-  // Gemini API Key state
+  // Auth state
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('dchem_user_session_v3');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [whitelist, setWhitelist] = useState(() => {
+    const saved = localStorage.getItem('dchem_whitelist_v3');
+    return saved ? JSON.parse(saved) : INITIAL_WHITELIST;
+  });
+  const [modules, setModules] = useState(() => {
+    const saved = localStorage.getItem('dchem_modules_v3');
+    return saved ? JSON.parse(saved) : INITIAL_MODULES;
+  });
+
+  // Login inputs: Phone + 4-digit PIN
+  const [inputPhone, setInputPhone] = useState('');
+  const [inputPin, setInputPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
+  const [authError, setAuthError] = useState('');
+
+  // Gemini API key state
   const [geminiApiKey, setGeminiApiKey] = useState(() => {
     return localStorage.getItem('dchem_gemini_api_key') || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY) || '';
   });
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   const [tempApiKey, setTempApiKey] = useState('');
 
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('dchem_user_session');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [whitelist, setWhitelist] = useState(() => {
-    const saved = localStorage.getItem('dchem_whitelist_v1');
-    return saved ? JSON.parse(saved) : INITIAL_WHITELIST;
-  });
-  const [modules, setModules] = useState(() => {
-    const saved = localStorage.getItem('dchem_modules_v1');
-    return saved ? JSON.parse(saved) : INITIAL_MODULES;
-  });
-
+  // UI state
   const [activeTab, setActiveTab] = useState('classroom');
   const [selectedBoard, setSelectedBoard] = useState('ALL');
   const [selectedGrade, setSelectedGrade] = useState('ALL');
@@ -113,12 +122,8 @@ export default function DChemistryApp() {
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
   const [isAdminDrawerOpen, setIsAdminDrawerOpen] = useState(false);
 
-  // Auth Gate State
-  const [inputPhone, setInputPhone] = useState('');
-  const [authError, setAuthError] = useState('');
-
   // Admin New Student Form
-  const [newStudent, setNewStudent] = useState({ name: '', phone: '', board: 'ICSE', grade: 'Class 9' });
+  const [newStudent, setNewStudent] = useState({ name: '', phone: '', pin: '', board: 'ICSE', grade: 'Class 9' });
   // Admin New Module Form
   const [newModule, setNewModule] = useState({ board: 'ICSE', grade: 'Class 9', chapter: '', title: '', desc: '', videoUrl: '', driveNoteUrl: '' });
 
@@ -128,9 +133,9 @@ export default function DChemistryApp() {
     {
       id: 1,
       sender: "ai",
-      text: "Namaskar! I am your D-Chemistry Live AI Tutor mentored by Debajyoti Haldar (DJ Sir). Ask me anything in English, Benglish, বাংলা, or Hinglish! I analyze your questions with vivid real-life analogies, live web knowledge, and direct links to DJ Sir's chapter notes & video timestamps.",
-      analogy: "Think of chemical valency like people holding hands. Hydrogen has 1 hand, Oxygen has 2 hands. To make water, 1 Oxygen must hold two separate Hydrogens!",
-      webInsight: "Board Trend 2026: Focus heavily on variable oxidation states of transition elements (e.g., Fe²⁺ vs Fe³⁺) and balancing redox equations.",
+      text: "Namaskar! I am your D-Chemistry Live AI Tutor mentored by Debajyoti Haldar (DJ Sir). Ask me any chemistry concept, equation, or mechanism in English, Benglish, বাংলা, or Hinglish! I explain step-by-step with real-life analogies, exam pointers, and references to DJ Sir's chapter notes.",
+      analogy: "Think of chemical valency like people holding hands. Hydrogen has 1 hand, Oxygen has 2 hands. To form water, 1 Oxygen must hold two separate Hydrogens!",
+      webInsight: "Board Trend 2026: Focus heavily on balancing redox equations and explaining variable oxidation states in transition metals (Fe²⁺/Fe³⁺, Cu⁺/Cu²⁺).",
       vaultRef: { videoTime: "02:15", notePage: "Language of Chemistry (Ch 1)", moduleId: "icse-9-ch1" }
     }
   ]);
@@ -140,85 +145,125 @@ export default function DChemistryApp() {
   const theme = ASTRO_THEMES[currentWeekTheme] || ASTRO_THEMES.w1;
 
   useEffect(() => {
-    localStorage.setItem('dchem_whitelist_v1', JSON.stringify(whitelist));
+    localStorage.setItem('dchem_whitelist_v3', JSON.stringify(whitelist));
   }, [whitelist]);
 
   useEffect(() => {
-    localStorage.setItem('dchem_modules_v1', JSON.stringify(modules));
+    localStorage.setItem('dchem_modules_v3', JSON.stringify(modules));
   }, [modules]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, isAiLoading]);
 
+  // LOGIN HANDLER: PHONE + PIN VERIFICATION
+  const handlePhonePinLogin = (e) => {
+    e.preventDefault();
+    setAuthError('');
+    const cleanPhone = inputPhone.trim().replace(/\D/g, '');
+    const cleanPin = inputPin.trim();
+
+    if (cleanPhone.length < 10) {
+      setAuthError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+    if (cleanPin.length < 4) {
+      setAuthError('Please enter your 4-digit Authorization PIN.');
+      return;
+    }
+
+    // Match phone in whitelist
+    const student = whitelist.find(s => s.phone === cleanPhone);
+
+    if (!student) {
+      setAuthError('Access Denied: Phone number is not registered for D-Chemistry batches. Contact DJ Sir at 8918444186.');
+      return;
+    }
+
+    if (student.status !== 'active') {
+      setAuthError('Access Blocked: Your batch enrollment is currently inactive. Contact DJ Sir.');
+      return;
+    }
+
+    // Match PIN (default is student.pin, or last 4 digits of phone)
+    const validPin = student.pin || cleanPhone.slice(-4);
+    if (cleanPin !== validPin) {
+      setAuthError('Incorrect PIN: Please enter the 4-digit PIN provided by DJ Sir (Default is last 4 digits of your phone).');
+      return;
+    }
+
+    // Login successful
+    setUser(student);
+    localStorage.setItem('dchem_user_session_v3', JSON.stringify(student));
+  };
+
+  const handleGoogleMockLogin = () => {
+    const promptPhone = prompt("Enter your 10-digit registered mobile number to link Google login:");
+    if (!promptPhone) return;
+    const cleanPhone = promptPhone.trim().replace(/\D/g, '');
+    const student = whitelist.find(s => s.phone === cleanPhone && s.status === 'active');
+    
+    if (student) {
+      const promptPin = prompt("Enter your 4-digit Authorization PIN:");
+      const validPin = student.pin || cleanPhone.slice(-4);
+      if (promptPin === validPin) {
+        const googleUser = { ...student, authType: "Google" };
+        setUser(googleUser);
+        localStorage.setItem('dchem_user_session_v3', JSON.stringify(googleUser));
+      } else {
+        alert("Incorrect PIN! Authentication failed.");
+      }
+    } else {
+      alert("Access Denied: Phone number not registered by DJ Sir.");
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('dchem_user_session_v3');
+    setUser(null);
+  };
+
+  // API Key Save
   const handleSaveApiKey = (keyToSave) => {
     const clean = keyToSave.trim();
     setGeminiApiKey(clean);
     localStorage.setItem('dchem_gemini_api_key', clean);
     setIsApiKeyModalOpen(false);
-    alert(clean ? "✅ Gemini API Key saved! Live AI Tutor is now active." : "API Key cleared.");
+    alert(clean ? "✅ Gemini API Key saved! Live AI Tutor is now fully active." : "API Key cleared.");
   };
 
-  // Login
-  const handlePhoneLogin = (e) => {
-    e.preventDefault();
-    setAuthError('');
-    const cleanPhone = inputPhone.trim().replace(/\D/g, '');
-    if (cleanPhone.length < 10) {
-      setAuthError('Please enter a valid 10-digit mobile number.');
-      return;
-    }
-    const matched = whitelist.find(s => s.phone === cleanPhone && s.status === 'active');
-    if (matched) {
-      setUser(matched);
-      localStorage.setItem('dchem_user_session', JSON.stringify(matched));
-    } else {
-      setAuthError('Access Denied: This number is not enrolled in D-Chemistry batches. Contact DJ Sir at 8918444186.');
-    }
-  };
-
-  const handleGoogleMockLogin = () => {
-    const promptPhone = prompt("Enter your 10-digit registered WhatsApp/Mobile number to link with Google:");
-    if (!promptPhone) return;
-    const cleanPhone = promptPhone.trim().replace(/\D/g, '');
-    const matched = whitelist.find(s => s.phone === cleanPhone && s.status === 'active');
-    if (matched) {
-      const googleUser = { ...matched, authType: "Google" };
-      setUser(googleUser);
-      localStorage.setItem('dchem_user_session', JSON.stringify(googleUser));
-    } else {
-      alert("Access Denied: Phone number not whitelisted by DJ Sir.");
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('dchem_user_session');
-    setUser(null);
-  };
-
-  // Admin Actions
+  // Admin: Add Student with PIN
   const handleAddStudent = (e) => {
     e.preventDefault();
-    if (!newStudent.name || newStudent.phone.length !== 10) {
-      alert("Please provide full name and 10-digit mobile number.");
+    const cleanPhone = newStudent.phone.replace(/\D/g, '');
+    if (!newStudent.name || cleanPhone.length !== 10) {
+      alert("Please provide full student name and 10-digit mobile number.");
       return;
     }
+    const assignedPin = newStudent.pin.trim() || cleanPhone.slice(-4);
     const student = {
       id: Date.now(),
-      name: newStudent.name,
-      phone: newStudent.phone,
+      name: newStudent.name.trim(),
+      phone: cleanPhone,
+      pin: assignedPin,
       board: newStudent.board,
       grade: newStudent.grade,
       role: "student",
       status: "active"
     };
     setWhitelist([...whitelist, student]);
-    setNewStudent({ name: '', phone: '', board: 'ICSE', grade: 'Class 9' });
-    alert(`Success: ${student.name} can now log in using ${student.phone}`);
+    setNewStudent({ name: '', phone: '', pin: '', board: 'ICSE', grade: 'Class 9' });
+    alert(`Success: ${student.name} can now log in using Phone: ${student.phone} and PIN: ${student.pin}`);
   };
 
   const toggleStudentStatus = (id) => {
     setWhitelist(whitelist.map(s => s.id === id ? { ...s, status: s.status === 'active' ? 'blocked' : 'active' } : s));
+  };
+
+  const handleDeleteStudent = (id) => {
+    if (confirm("Are you sure you want to remove this student?")) {
+      setWhitelist(whitelist.filter(s => s.id !== id));
+    }
   };
 
   const handleAddModule = (e) => {
@@ -237,104 +282,92 @@ export default function DChemistryApp() {
     alert("New chapter uploaded to Vault successfully!");
   };
 
-  // LIVE GEMINI AI TUTOR ENGINE
+  // ROBUST GEMINI AI TUTOR ENGINE
   const handleAskAi = async (e) => {
     e.preventDefault();
     if (!query.trim()) return;
     const userQ = query.trim();
     setQuery('');
     
-    // Add user message to thread
     setChatMessages(prev => [...prev, { id: Date.now(), sender: "user", text: userQ }]);
     setIsAiLoading(true);
 
-    // If user provided a Gemini API Key, call LIVE Google Gemini API!
     if (geminiApiKey) {
       try {
-        const systemPrompt = `You are DJ Sir's AI Chemistry Tutor for the platform "D-Chemistry", mentored by Debajyoti Haldar (DJ Sir, contact: 8918444186).
-The student is asking a chemistry or academic query: "${userQ}".
-Selected Student Language: ${selectedLanguage} (Support English, Benglish, Bengali, Hinglish, or Hindi naturally based on the query).
+        const promptText = `You are DJ Sir's dedicated AI Chemistry Tutor for "D-Chemistry" (Mentored by Debajyoti Haldar, DJ Sir).
+Student's Question: "${userQ}"
+Preferred Student Language: ${selectedLanguage} (English, Benglish, Bengali, or Hinglish).
 
-You MUST output ONLY a valid JSON object strictly matching this format without any surrounding markdown code fences or backticks:
-{
-  "text": "Comprehensive, crystal-clear explanation answering the student's question directly in their preferred language (${selectedLanguage}). Make it engaging and easy to understand.",
-  "analogy": "A memorable, vivid real-life everyday analogy (kitchen, traffic, sports, daily life) that completely simplifies this concept.",
-  "webInsight": "High-yield board examination insight (ICSE/CBSE/ISC/WBCHSE), recent scientific trivia, or real-world application relevant to 2026.",
-  "recommendedTopic": "Relevant chapter topic name (e.g., Electrochemistry, Language of Chemistry, Carbon Compounds, Periodic Table)",
-  "videoTime": "03:45"
-}`;
+Explain the concept thoroughly, clearly, and engagingly. You MUST structure your answer into these 3 distinct sections:
+
+[MAIN_EXPLANATION]
+Write a comprehensive, step-by-step, concept-clarifying chemistry explanation in ${selectedLanguage}. Include formulas, reaction equations, and why it happens.
+
+[ANALOGY]
+Provide a memorable, simple, real-life everyday analogy (kitchen, street traffic, sports, daily life) that makes this concept intuitive.
+
+[WEB_INSIGHT]
+Provide high-yield 2026 board examination tips (ICSE, CBSE, ISC, WBCHSE, NEET/JEE), common student mistakes, or practical observations.
+
+[RECOMMENDED_TOPIC]
+Give a short 2-3 word topic name (e.g. Redox Titration, Language of Chemistry, Carbon Compounds, Periodic Table, Electrochemistry).`;
 
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey.trim()}`;
-        
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [
-              {
-                role: 'user',
-                parts: [{ text: systemPrompt }]
-              }
-            ],
-            generationConfig: {
-              temperature: 0.7,
-              responseMimeType: "application/json"
-            }
+            contents: [{ role: 'user', parts: [{ text: promptText }] }],
+            generationConfig: { temperature: 0.7 }
           })
         });
 
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData?.error?.message || `HTTP error ${res.status}`);
-        }
+        if (res.ok) {
+          const data = await res.json();
+          const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          
+          let mainText = raw;
+          let analogyText = "";
+          let webText = "";
+          let topicName = "General Chemistry";
 
-        const data = await res.json();
-        const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        let parsed = null;
-        try {
-          const cleanJson = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
-          parsed = JSON.parse(cleanJson);
-        } catch (err) {
-          parsed = {
-            text: rawContent || "Processed response from Gemini AI.",
-            analogy: "Relate this principle to real-world particle interactions.",
-            webInsight: "Refer to the latest 2026 examination trends and syllabus patterns.",
-            recommendedTopic: "General Chemistry",
-            videoTime: "02:00"
-          };
-        }
-
-        // Match against existing modules in vault
-        const matchedModule = modules.find(m => 
-          m.title.toLowerCase().includes(parsed.recommendedTopic?.toLowerCase() || '') ||
-          m.chapter.toLowerCase().includes(parsed.recommendedTopic?.toLowerCase() || '')
-        ) || modules[0];
-
-        setChatMessages(prev => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            sender: "ai",
-            text: parsed.text,
-            analogy: parsed.analogy,
-            webInsight: parsed.webInsight,
-            vaultRef: {
-              videoTime: parsed.videoTime || "02:15",
-              notePage: parsed.recommendedTopic || "DJ Sir Vault",
-              moduleId: matchedModule.id
-            }
+          if (raw.includes('[MAIN_EXPLANATION]')) {
+            const parts = raw.split(/\[MAIN_EXPLANATION\]|\[ANALOGY\]|\[WEB_INSIGHT\]|\[RECOMMENDED_TOPIC\]/);
+            mainText = parts[1]?.trim() || raw;
+            analogyText = parts[2]?.trim() || "";
+            webText = parts[3]?.trim() || "";
+            topicName = parts[4]?.trim() || "D-Chemistry Vault";
           }
-        ]);
-        setIsAiLoading(false);
-        return;
+
+          const matchedModule = modules.find(m => 
+            m.title.toLowerCase().includes(topicName.toLowerCase()) ||
+            m.chapter.toLowerCase().includes(topicName.toLowerCase())
+          ) || modules[0];
+
+          setChatMessages(prev => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              sender: "ai",
+              text: mainText,
+              analogy: analogyText,
+              webInsight: webText,
+              vaultRef: {
+                videoTime: "02:30",
+                notePage: topicName,
+                moduleId: matchedModule.id
+              }
+            }
+          ]);
+          setIsAiLoading(false);
+          return;
+        }
       } catch (err) {
-        console.error("Gemini API Error:", err);
-        // Fall through to smart intelligent local processor with error notification
+        console.error("Gemini Live Error:", err);
       }
     }
 
-    // Dynamic Intelligent Client-side Engine (when key is missing or failed)
+    // Dynamic Intelligent Local Fallback Engine
     setTimeout(() => {
       let explanation = "";
       let analogy = "";
@@ -364,26 +397,6 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
         web = "Lab Safety & Board Rule: Always use dilute H2SO4. Never use HCl (which gets oxidized to chlorine gas) or HNO3 (which is itself a strong oxidizing agent).";
         targetModule = modules.find(m => m.id === "wb-11-titration") || modules[0];
         vTime = "14:20";
-      } else if (lowerQ.includes('valency') || lowerQ.includes('radical') || lowerQ.includes('formula') || lowerQ.includes('balance')) {
-        explanation = selectedLanguage === 'বাংলা'
-          ? "যোজ্যতা (Valency) হলো কোনো মৌলের অন্য মৌলের সাথে যুক্ত হওয়ার ক্ষমতা। ট্রানজিশন মৌলগুলি (যেমন Iron, Copper) পরিবর্তনশীল যোজ্যতা (Variable valency) দেখায় কারণ তাদের সর্ববহিঃস্থ কক্ষের পাশাপাশি উপ-কক্ষ (d-orbital)-এর ইলেকট্রনও বন্ধন তৈরিতে অংশ নিতে পারে।"
-          : selectedLanguage === 'Benglish'
-          ? "Valency mane combining capacity of an element. Fe ar Cu er moto transition metals ra variable valency dekhay karon outer shell charao d-orbital er electrons bond e participate kore. Fe2+ holo Ferrous, Fe3+ holo Ferric."
-          : "Valency represents the combining capacity of an atom or radical based on electron gain, loss, or sharing. Transition elements (like Fe, Cu) display variable valency because electrons from both the outermost shell and the penultimate d-subshell can participate in bonding.";
-        analogy = "Think of valency like human hands! Hydrogen has 1 hand, Oxygen has 2 hands. To make a stable compound (Water), 1 Oxygen holds hands with 2 individual Hydrogens.";
-        web = "Class 9 ICSE High-Yield: Always balance polyatomic radicals as single entities (e.g., SO₄²⁻, NO₃⁻) using brackets and the criss-cross rule.";
-        targetModule = modules.find(m => m.id === "icse-9-ch1") || modules[0];
-        vTime = "02:15";
-      } else if (lowerQ.includes('periodic') || lowerQ.includes('inert pair') || lowerQ.includes('radius') || lowerQ.includes('electronegativ')) {
-        explanation = selectedLanguage === 'বাংলা'
-          ? "পর্যায় সারণীতে বাম থেকে ডানে গেলে পরমাণুর আকার কমে এবং তড়িৎ-ঋণাত্মকতা বাড়ে। ভারী p-ব্লক মৌলগুলিতে (যেমন Tl, Pb, Bi) 4f ও 5d উপকক্ষের দুর্বল স্ক্রীনিংয়ের কারণে সর্ববহিঃস্থ s-ইলেকট্রন যুগল বন্ধনে অংশ নিতে চায় না—এটিকে 'Inert Pair Effect' বলে।"
-          : selectedLanguage === 'Benglish'
-          ? "Periodic table e left to right gele effective nuclear charge bare tai atomic size choto hoy. Heavy p-block elements e (jemon Tl, Pb) inner f-electrons er poor shielding er jonno ns2 electron pair inert thake. Etai Inert Pair Effect."
-          : "Along a period, effective nuclear charge increases, shrinking atomic radius and raising electronegativity. In heavier p-block elements (Tl, Pb, Bi), the poor shielding effect of intervening 4f and 5d subshells causes the outermost ns² electron pair to remain non-bonding, known as the Inert Pair Effect.";
-        analogy = "Think of the nucleus like a powerful magnet and electrons as metal clips. Poor shielding by f-orbitals is like a thin paper sheet—the magnet pulls outer s-electrons so tight they refuse to react!";
-        web = "ISC/CBSE PYQ: Why is PbO₂ a strong oxidizing agent while SnO₂ is stable? Because Pb(II) is far more stable than Pb(IV) due to the Inert Pair Effect!";
-        targetModule = modules.find(m => m.id === "isc-11-ch3") || modules[0];
-        vTime = "11:25";
       } else {
         explanation = selectedLanguage === 'বাংলা'
           ? `আপনার প্রশ্ন "${userQ}"-এর রাসায়নিক ব্যাখ্যা: রসায়নের যেকোনো সমীকরণ বা কনসেপ্ট সমাধান করার মূল ভিত্তি হলো ইলেকট্রনিক গঠন এবং তাপগতীয় স্থায়িত্ব। ডিজে স্যারের ক্লাসনোট ও ভিডিওতে এই বিষয়ের গভীরে আলোচনা করা রয়েছে।`
@@ -412,23 +425,25 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
         }
       ]);
       setIsAiLoading(false);
-    }, 800);
+    }, 700);
   };
 
-  // If not authenticated, render Login Gatekeeper
+  // IF NOT AUTHENTICATED: RENDER 2-STEP LOGIN GATEKEEPER
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 selection:bg-emerald-200" style={{ backgroundColor: theme.bg }}>
-        <div className="w-full max-w-md bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-xl border text-center" style={{ borderColor: theme.border }}>
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black mx-auto mb-4 text-white shadow-md" style={{ backgroundColor: theme.primary }}>
+        <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border text-center" style={{ borderColor: theme.border }}>
+          
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black mx-auto mb-4 text-white shadow" style={{ backgroundColor: theme.primary }}>
             D
           </div>
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: theme.text }}>D-Chemistry Portal</h1>
           <p className="text-xs mt-1 mb-6 font-medium" style={{ color: theme.subText }}>Mentored by Debajyoti Haldar (DJ Sir)</p>
 
-          <form onSubmit={handlePhoneLogin} className="space-y-4 text-left">
+          <form onSubmit={handlePhonePinLogin} className="space-y-4 text-left">
+            {/* 1. Phone Input */}
             <div>
-              <label className="block text-xs font-semibold mb-1.5 ml-1" style={{ color: theme.text }}>
+              <label className="block text-xs font-semibold mb-1 ml-1" style={{ color: theme.text }}>
                 Registered WhatsApp / Mobile Number
               </label>
               <div className="relative flex items-center">
@@ -446,6 +461,35 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
               </div>
             </div>
 
+            {/* 2. 4-Digit PIN Input */}
+            <div>
+              <div className="flex justify-between items-center mb-1 ml-1">
+                <label className="text-xs font-semibold" style={{ color: theme.text }}>
+                  4-Digit Student Authorization PIN
+                </label>
+                <span className="text-[10px] text-slate-500 font-medium">Default: Last 4 digits of phone</span>
+              </div>
+              <div className="relative flex items-center">
+                <input 
+                  type={showPin ? "text" : "password"}
+                  maxLength="4"
+                  value={inputPin}
+                  onChange={e => setInputPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="••••"
+                  className="w-full px-4 py-3 bg-[#FAF8F5] border rounded-xl text-sm tracking-widest font-mono outline-none"
+                  style={{ borderColor: theme.border }}
+                  required
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-3.5 text-slate-500 hover:text-slate-800 text-xs"
+                >
+                  {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
             {authError && (
               <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-start gap-2">
                 <Shield className="w-4 h-4 shrink-0 mt-0.5" />
@@ -455,10 +499,10 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
 
             <button 
               type="submit"
-              className="w-full py-3 text-white font-semibold text-sm rounded-xl transition-all shadow-md active:scale-[0.98]"
+              className="w-full py-3 text-white font-semibold text-sm rounded-xl transition-all shadow active:scale-[0.98]"
               style={{ backgroundColor: theme.primary }}
             >
-              Verify & Enter Classroom →
+              Verify PIN & Enter Classroom →
             </button>
           </form>
 
@@ -478,7 +522,8 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
           </button>
 
           <div className="mt-8 p-3 bg-amber-50 rounded-xl border border-amber-200 text-left text-[11px] text-amber-900 leading-relaxed">
-            🔒 <strong>Strictly Private Platform.</strong> Access is reserved exclusively for students enrolled under DJ Sir. Contact <strong>8918444186</strong> for authorization.
+            🔒 <strong>Strictly Private Platform.</strong> Access reserved exclusively for enrolled students. 
+            For PIN recovery or authorization, contact DJ Sir at <strong>8918444186</strong>.
           </div>
         </div>
       </div>
@@ -499,13 +544,12 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
       <div className="text-white text-xs px-4 py-2 flex justify-between items-center shadow-inner" style={{ backgroundColor: theme.primary }}>
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>Logged in: <strong>{user.name}</strong> ({user.grade || 'Faculty'})</span>
+          <span>Logged in: <strong>{user.name}</strong> ({user.grade || 'Faculty'}) • PIN: <span className="font-mono">{user.pin || user.phone?.slice(-4)}</span></span>
         </div>
         <div className="flex items-center gap-3">
-          {/* Gemini API Status Badge */}
           <button 
             onClick={() => { setTempApiKey(geminiApiKey); setIsApiKeyModalOpen(true); }}
-            className={`px-2.5 py-1 rounded text-[11px] font-bold flex items-center gap-1.5 transition-all ${geminiApiKey ? 'bg-emerald-700 hover:bg-emerald-600 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white animate-bounce'}`}
+            className={`px-2.5 py-1 rounded text-[11px] font-bold flex items-center gap-1.5 transition-all ${geminiApiKey ? 'bg-emerald-700 hover:bg-emerald-600 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white'}`}
           >
             <Key className="w-3 h-3" />
             {geminiApiKey ? '🟢 Live Gemini AI Active' : '⚡ Connect Live Gemini API'}
@@ -516,7 +560,7 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
               onClick={() => setIsAdminDrawerOpen(!isAdminDrawerOpen)}
               className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold px-2.5 py-1 rounded text-[11px] shadow transition-all"
             >
-              {isAdminDrawerOpen ? 'Close Faculty Admin' : '⚡ Manage Students & Modules'}
+              {isAdminDrawerOpen ? 'Close Faculty Admin' : '⚡ Manage Students & PINs'}
             </button>
           )}
           <button onClick={handleLogout} className="flex items-center gap-1 text-slate-200 hover:text-white underline ml-2">
@@ -525,7 +569,7 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
         </div>
       </div>
 
-      {/* API Key Configuration Modal */}
+      {/* Gemini API Modal */}
       {isApiKeyModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl border space-y-4" style={{ borderColor: theme.border }}>
@@ -536,19 +580,14 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-800">Google Gemini API Key Setup</h3>
-                  <p className="text-xs text-slate-500">Enable real-time, 100% dynamic AI Tutor responses</p>
+                  <p className="text-xs text-slate-500">Enable real-time, comprehensive AI answers with analogies</p>
                 </div>
               </div>
-              <button 
-                onClick={() => setIsApiKeyModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-xs font-bold"
-              >
-                ✕
-              </button>
+              <button onClick={() => setIsApiKeyModalOpen(false)} className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-xs font-bold">✕</button>
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              Google provides a completely <strong>FREE Gemini API Key</strong> for educators and students with generous monthly limits. No credit card required.
+              Paste your free Gemini API Key from Google AI Studio. It connects directly to <code>gemini-1.5-flash</code> to provide deep, custom chemistry responses.
             </p>
 
             <div className="space-y-1.5">
@@ -563,50 +602,35 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
             </div>
 
             <div className="flex items-center justify-between pt-2">
-              <a 
-                href="https://aistudio.google.com/app/apikey" 
-                target="_blank" 
-                rel="noreferrer"
-                className="text-xs text-emerald-700 font-bold underline flex items-center gap-1"
-              >
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-xs text-emerald-700 font-bold underline flex items-center gap-1">
                 Get Free API Key from Google AI Studio <ExternalLink className="w-3 h-3" />
               </a>
               <div className="flex gap-2">
-                <button 
-                  onClick={() => handleSaveApiKey('')}
-                  className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold hover:bg-slate-100"
-                >
-                  Clear Key
-                </button>
-                <button 
-                  onClick={() => handleSaveApiKey(tempApiKey)}
-                  className="px-4 py-1.5 rounded-xl bg-[#2D4030] text-white text-xs font-bold hover:bg-[#202E23] shadow"
-                >
-                  Save & Activate
-                </button>
+                <button onClick={() => handleSaveApiKey('')} className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold hover:bg-slate-100">Clear Key</button>
+                <button onClick={() => handleSaveApiKey(tempApiKey)} className="px-4 py-1.5 rounded-xl bg-[#2D4030] text-white text-xs font-bold hover:bg-[#202E23] shadow">Save & Activate</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Admin Panel Drawer */}
+      {/* Admin Panel Drawer: Student Whitelist + PIN Management */}
       {isAdminDrawerOpen && user.phone === '8918444186' && (
         <div className="bg-slate-900 text-slate-100 p-6 border-b-4 border-emerald-500 shadow-2xl">
           <div className="max-w-6xl mx-auto space-y-6">
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-bold text-emerald-400">DJ Sir Faculty Control Center</h2>
-                <p className="text-xs text-slate-400">Manage enrolled student phone numbers, Gemini AI key, and upload Google Drive chapters directly.</p>
+                <p className="text-xs text-slate-400">Manage enrolled student phone numbers, 4-digit PINs, and upload Drive modules directly.</p>
               </div>
               <span className="bg-emerald-950 text-emerald-300 text-xs px-3 py-1 rounded-full font-mono">Faculty Access Active</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Whitelist Manager */}
+              {/* Whitelist Manager with PIN */}
               <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700">
                 <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-emerald-400" /> Add Authorized Student
+                  <Shield className="w-4 h-4 text-emerald-400" /> Add Authorized Student with PIN
                 </h3>
                 <form onSubmit={handleAddStudent} className="space-y-3">
                   <div className="grid grid-cols-2 gap-2">
@@ -628,51 +652,64 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <input 
+                      type="text"
+                      maxLength="4"
+                      placeholder="4-Digit PIN (Blank=Last 4 digits)"
+                      value={newStudent.pin}
+                      onChange={e => setNewStudent({...newStudent, pin: e.target.value.replace(/\D/g, '')})}
+                      className="bg-slate-700 text-white text-xs px-3 py-2 rounded-lg outline-none font-mono"
+                    />
                     <select 
                       value={newStudent.board}
                       onChange={e => setNewStudent({...newStudent, board: e.target.value})}
                       className="bg-slate-700 text-white text-xs px-3 py-2 rounded-lg"
                     >
-                      <option>ICSE</option>
-                      <option>ISC</option>
-                      <option>CBSE</option>
-                      <option>WBCHSE</option>
-                      <option>JEE/NEET</option>
+                      <option>ICSE</option><option>ISC</option><option>CBSE</option><option>WBCHSE</option>
                     </select>
                     <select 
                       value={newStudent.grade}
                       onChange={e => setNewStudent({...newStudent, grade: e.target.value})}
                       className="bg-slate-700 text-white text-xs px-3 py-2 rounded-lg"
                     >
-                      <option>Class 9</option>
-                      <option>Class 10</option>
-                      <option>Class 11</option>
-                      <option>Class 12</option>
+                      <option>Class 9</option><option>Class 10</option><option>Class 11</option><option>Class 12</option>
                     </select>
                   </div>
                   <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2 rounded-lg shadow">
-                    + Authorize Student Number
+                    + Authorize Student & Generate PIN
                   </button>
                 </form>
 
-                {/* Whitelist List */}
-                <div className="mt-4 max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                {/* Whitelist List with visible PINs */}
+                <div className="mt-4 max-h-48 overflow-y-auto space-y-2 pr-1">
                   {whitelist.map(st => (
-                    <div key={st.id} className="flex justify-between items-center bg-slate-900/80 px-3 py-1.5 rounded-lg text-xs">
+                    <div key={st.id} className="flex justify-between items-center bg-slate-900/80 px-3 py-2 rounded-lg text-xs">
                       <div>
                         <span className="font-semibold text-white">{st.name}</span>
                         <span className="text-slate-400 ml-2 font-mono">({st.phone})</span>
-                        <span className="ml-2 text-[10px] bg-slate-700 text-emerald-300 px-1.5 py-0.5 rounded">{st.grade}</span>
+                        <span className="ml-2 px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono font-bold text-[11px]">
+                          PIN: {st.pin || st.phone.slice(-4)}
+                        </span>
                       </div>
-                      {st.phone !== '8918444186' && (
-                        <button 
-                          onClick={() => toggleStudentStatus(st.id)}
-                          className={`text-[10px] px-2 py-0.5 rounded font-semibold ${st.status === 'active' ? 'bg-rose-950 text-rose-300' : 'bg-emerald-950 text-emerald-300'}`}
-                        >
-                          {st.status === 'active' ? 'Revoke' : 'Reactivate'}
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {st.phone !== '8918444186' && (
+                          <>
+                            <button 
+                              onClick={() => toggleStudentStatus(st.id)}
+                              className={`text-[10px] px-2 py-0.5 rounded font-semibold ${st.status === 'active' ? 'bg-amber-950 text-amber-300' : 'bg-emerald-950 text-emerald-300'}`}
+                            >
+                              {st.status === 'active' ? 'Revoke' : 'Reactivate'}
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteStudent(st.id)}
+                              className="text-rose-400 hover:text-rose-300"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -681,13 +718,13 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
               {/* Add New Drive Lecture Module */}
               <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700">
                 <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                  <Plus className="w-4 h-4 text-emerald-400" /> Upload New Drive Module
+                  <Plus className="w-4 h-4 text-emerald-400" /> Upload Google Drive Lecture & Note
                 </h3>
                 <form onSubmit={handleAddModule} className="space-y-3 text-xs">
                   <div className="grid grid-cols-2 gap-2">
                     <input 
                       type="text"
-                      placeholder="Chapter Name (e.g. Ch 5 Atomic Structure)"
+                      placeholder="Chapter (e.g. Ch 2 Chemical Reactions)"
                       value={newModule.chapter}
                       onChange={e => setNewModule({...newModule, chapter: e.target.value})}
                       className="bg-slate-700 text-white px-3 py-2 rounded-lg outline-none"
@@ -704,7 +741,7 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
                   </div>
                   <input 
                     type="text"
-                    placeholder="Short Description"
+                    placeholder="Short Description of Lecture"
                     value={newModule.desc}
                     onChange={e => setNewModule({...newModule, desc: e.target.value})}
                     className="w-full bg-slate-700 text-white px-3 py-2 rounded-lg outline-none"
@@ -712,21 +749,21 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
                   <div className="grid grid-cols-2 gap-2">
                     <input 
                       type="url"
-                      placeholder="Google Drive PDF URL"
+                      placeholder="Google Drive PDF URL (preview link)"
                       value={newModule.driveNoteUrl}
                       onChange={e => setNewModule({...newModule, driveNoteUrl: e.target.value})}
                       className="bg-slate-700 text-white px-3 py-2 rounded-lg outline-none"
                     />
                     <input 
                       type="url"
-                      placeholder="Video URL (YouTube/Drive)"
+                      placeholder="Drive or YouTube Video URL"
                       value={newModule.videoUrl}
                       onChange={e => setNewModule({...newModule, videoUrl: e.target.value})}
                       className="bg-slate-700 text-white px-3 py-2 rounded-lg outline-none"
                     />
                   </div>
                   <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-2 rounded-lg shadow">
-                    + Publish Module to Vault
+                    + Publish Module to Classroom Vault
                   </button>
                 </form>
               </div>
@@ -735,7 +772,7 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
         </div>
       )}
 
-      {/* Header & Astro-Theme Switcher */}
+      {/* Header */}
       <header className="px-6 py-4 border-b bg-white/70 backdrop-blur-md sticky top-0 z-30 flex flex-wrap justify-between items-center gap-4" style={{ borderColor: theme.border }}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xl shadow" style={{ backgroundColor: theme.primary }}>
@@ -747,12 +784,11 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
           </div>
         </div>
 
-        {/* Language & Theme Controls */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Language Selector */}
+          {/* Language Switcher */}
           <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl text-xs">
             <Globe className="w-3.5 h-3.5 text-slate-500 ml-1.5" />
-            {['English', 'Benglish', 'বাংলা', 'Hinglish', 'हिंदी'].map(lang => (
+            {['English', 'Benglish', 'বাংলা', 'Hinglish'].map(lang => (
               <button
                 key={lang}
                 onClick={() => setSelectedLanguage(lang)}
@@ -763,7 +799,7 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
             ))}
           </div>
 
-          {/* Weekly Astro-Pastel Theme Selector */}
+          {/* Theme Switcher */}
           <div className="flex items-center gap-1.5 bg-slate-100/90 p-1 rounded-xl text-xs">
             <span className="text-[10px] text-slate-500 px-1 font-bold uppercase">Theme:</span>
             {Object.values(ASTRO_THEMES).map(t => (
@@ -809,49 +845,28 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
       {/* Main Container */}
       <main className="max-w-7xl mx-auto p-6 flex-1 w-full">
         
-        {/* TAB 1: CLASSROOM & DRIVE VAULT */}
+        {/* TAB 1: CLASSROOM */}
         {activeTab === 'classroom' && (
           <div className="space-y-6">
-            {/* Filters */}
             <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-white border" style={{ borderColor: theme.border }}>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="font-bold text-slate-600">Board:</span>
                 {['ALL', 'ICSE', 'ISC', 'CBSE', 'WBCHSE'].map(b => (
-                  <button 
-                    key={b} 
-                    onClick={() => setSelectedBoard(b)}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all ${selectedBoard === b ? 'bg-slate-800 text-white shadow' : 'bg-slate-100 text-slate-600'}`}
-                  >
-                    {b}
-                  </button>
+                  <button key={b} onClick={() => setSelectedBoard(b)} className={`px-3 py-1.5 rounded-lg font-bold transition-all ${selectedBoard === b ? 'bg-slate-800 text-white shadow' : 'bg-slate-100 text-slate-600'}`}>{b}</button>
                 ))}
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="font-bold text-slate-600">Grade:</span>
                 {['ALL', 'Class 9', 'Class 10', 'Class 11', 'Class 12'].map(g => (
-                  <button 
-                    key={g} 
-                    onClick={() => setSelectedGrade(g)}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all ${selectedGrade === g ? 'bg-slate-800 text-white shadow' : 'bg-slate-100 text-slate-600'}`}
-                  >
-                    {g}
-                  </button>
+                  <button key={g} onClick={() => setSelectedGrade(g)} className={`px-3 py-1.5 rounded-lg font-bold transition-all ${selectedGrade === g ? 'bg-slate-800 text-white shadow' : 'bg-slate-100 text-slate-600'}`}>{g}</button>
                 ))}
               </div>
             </div>
 
-            {/* Video Player + Drive Notes Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left 2 Cols: Custom Player */}
               <div className="lg:col-span-2 space-y-4">
                 <div className="bg-black rounded-3xl overflow-hidden aspect-video relative shadow-xl border border-slate-800">
-                  <iframe 
-                    src={activeModule.videoUrl} 
-                    title={activeModule.title}
-                    className="w-full h-full border-0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
+                  <iframe src={activeModule.videoUrl} title={activeModule.title} className="w-full h-full border-0" allowFullScreen />
                 </div>
 
                 <div className="p-6 rounded-3xl bg-white border space-y-3" style={{ borderColor: theme.border }}>
@@ -872,15 +887,11 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
                     </button>
                   </div>
 
-                  {/* Interactive Timestamps */}
                   <div className="pt-3 border-t border-slate-100">
                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Key Video Milestones:</h3>
                     <div className="flex flex-wrap gap-2">
                       {activeModule.timestamps?.map((ts, idx) => (
-                        <button 
-                          key={idx}
-                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium flex items-center gap-1.5 transition-all"
-                        >
+                        <button key={idx} className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium flex items-center gap-1.5 transition-all">
                           <Play className="w-3 h-3 text-emerald-600 fill-emerald-600" />
                           <span className="font-bold text-emerald-700 font-mono">{ts.time}</span>
                           <span>{ts.label}</span>
@@ -891,7 +902,6 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
                 </div>
               </div>
 
-              {/* Right 1 Col: Module List */}
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-slate-700 px-1">Curriculum Modules ({filteredModules.length})</h3>
                 <div className="space-y-3 max-h-[700px] overflow-y-auto pr-1">
@@ -919,7 +929,7 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
           </div>
         )}
 
-        {/* TAB 2: AI TUTOR (LIVE & POLYGLOT) */}
+        {/* TAB 2: AI TUTOR */}
         {activeTab === 'aitutor' && (
           <div className="max-w-4xl mx-auto space-y-4">
             <div className="bg-white rounded-3xl p-6 border shadow-sm space-y-4" style={{ borderColor: theme.border }}>
@@ -930,13 +940,10 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
                   </div>
                   <div>
                     <h2 className="text-lg font-bold" style={{ color: theme.text }}>DJ Sir Live AI Tutor</h2>
-                    <p className="text-xs text-slate-500">
-                      Grounded in chemistry syllabus, real-life analogies, and DJ Sir notes ({selectedLanguage} active).
-                    </p>
+                    <p className="text-xs text-slate-500">Comprehensive explanations, daily analogies, and direct vault timestamps ({selectedLanguage} active)</p>
                   </div>
                 </div>
 
-                {/* API Status & Setup Button */}
                 <button 
                   onClick={() => { setTempApiKey(geminiApiKey); setIsApiKeyModalOpen(true); }}
                   className="px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100"
@@ -951,25 +958,18 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-900">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
-                    <span>Gemini API is currently running in smart fallback mode. Add your free Gemini API key to unlock 100% live web responses!</span>
+                    <span>Using smart fallback engine. Click Setup Gemini API to connect real-time Google web search!</span>
                   </div>
-                  <button 
-                    onClick={() => { setTempApiKey(geminiApiKey); setIsApiKeyModalOpen(true); }}
-                    className="underline font-bold text-amber-950 shrink-0 ml-2"
-                  >
-                    Add Key
-                  </button>
+                  <button onClick={() => { setTempApiKey(geminiApiKey); setIsApiKeyModalOpen(true); }} className="underline font-bold ml-2">Add Key</button>
                 </div>
               )}
 
-              {/* Chat Thread */}
               <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 pt-2">
                 {chatMessages.map(msg => (
                   <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-2xl p-4 rounded-3xl text-xs space-y-3 ${msg.sender === 'user' ? 'bg-slate-800 text-white rounded-tr-none' : 'bg-slate-50 border rounded-tl-none'}`} style={{ borderColor: theme.border }}>
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                       
-                      {/* Real Life Analogy Box */}
                       {msg.analogy && (
                         <div className="p-3 bg-amber-50/90 rounded-2xl border border-amber-200/80 text-amber-950 space-y-1">
                           <span className="font-bold flex items-center gap-1.5 text-amber-800">
@@ -979,17 +979,15 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
                         </div>
                       )}
 
-                      {/* Live Web Grounding Box */}
                       {msg.webInsight && (
                         <div className="p-3 bg-blue-50/90 rounded-2xl border border-blue-200/80 text-blue-950 space-y-1">
                           <span className="font-bold flex items-center gap-1.5 text-blue-800">
-                            🌐 Syllabus & Web Grounding:
+                            🌐 Syllabus & Board Grounding:
                           </span>
                           <p className="leading-relaxed">{msg.webInsight}</p>
                         </div>
                       )}
 
-                      {/* Vault Action Button */}
                       {msg.vaultRef && (
                         <div className="pt-2 flex items-center gap-2">
                           <button 
@@ -1013,19 +1011,18 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
                 {isAiLoading && (
                   <div className="p-4 bg-slate-100 rounded-2xl text-xs text-slate-500 flex items-center gap-2 animate-pulse">
                     <RefreshCw className="w-4 h-4 animate-spin text-emerald-700" />
-                    DJ Sir AI is generating your live explanation and everyday analogies...
+                    DJ Sir AI is generating comprehensive explanation and analogies...
                   </div>
                 )}
                 <div ref={chatEndRef} />
               </div>
 
-              {/* Chat Input */}
               <form onSubmit={handleAskAi} className="flex gap-2 pt-2 border-t">
                 <input 
                   type="text"
                   value={query}
                   onChange={e => setQuery(e.target.value)}
-                  placeholder={`Ask a chemistry question in ${selectedLanguage} (e.g. SN1 vs SN2, Redox Titration, Periodic trends)...`}
+                  placeholder={`Ask a chemistry question in ${selectedLanguage} (e.g. SN1 vs SN2, Redox Titration)...`}
                   className="flex-1 px-4 py-3 bg-[#FAF8F5] border rounded-2xl text-xs outline-none focus:ring-2 focus:ring-emerald-700"
                   style={{ borderColor: theme.border }}
                 />
@@ -1042,7 +1039,7 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
           </div>
         )}
 
-        {/* TAB 3: STUDENT SANGHA (COMMUNITY FORUM) */}
+        {/* TAB 3: STUDENT SANGHA */}
         {activeTab === 'sangha' && (
           <div className="max-w-4xl mx-auto space-y-4">
             <div className="bg-white rounded-3xl p-6 border shadow-sm space-y-4" style={{ borderColor: theme.border }}>
@@ -1091,7 +1088,7 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
           </div>
         )}
 
-        {/* TAB 4: D-TATTVA (CALM SANCTUARY) */}
+        {/* TAB 4: D-TATTVA */}
         {activeTab === 'sanctuary' && (
           <div className="max-w-4xl mx-auto space-y-6">
             <div className="bg-white rounded-3xl p-6 border shadow-sm space-y-4" style={{ borderColor: theme.border }}>
@@ -1105,7 +1102,6 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
                 </div>
               </div>
 
-              {/* Breathing Exercise Widget */}
               <div className="p-6 rounded-3xl bg-[#FAF8F5] border text-center space-y-4" style={{ borderColor: theme.border }}>
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Exam Stress Decompressor: 4-4-4-4 Box Breath</span>
                 <div className="w-28 h-28 rounded-full border-4 border-dashed border-emerald-600 flex items-center justify-center mx-auto scale-in shadow-inner">
@@ -1116,7 +1112,6 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
                 </p>
               </div>
 
-              {/* Curated Guidance Channels */}
               <div>
                 <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Curated Guidance & Motivation Vault:</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
@@ -1142,7 +1137,7 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
 
       </main>
 
-      {/* Google Drive PDF Viewer Modal */}
+      {/* Google Drive PDF Modal */}
       {isDriveModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden shadow-2xl border" style={{ borderColor: theme.border }}>
@@ -1151,12 +1146,7 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
                 <h3 className="text-sm font-bold text-slate-800">{activeModule.title} — Google Drive Notes</h3>
                 <p className="text-[11px] text-slate-500">Official D-Chemistry Study Material & Formula Derivations</p>
               </div>
-              <button 
-                onClick={() => setIsDriveModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center font-bold text-slate-700"
-              >
-                ✕
-              </button>
+              <button onClick={() => setIsDriveModalOpen(false)} className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center font-bold text-slate-700">✕</button>
             </div>
             <div className="flex-1 bg-slate-100 flex flex-col items-center justify-center p-6 text-center">
               <BookOpen className="w-12 h-12 text-slate-400 mb-3" />
@@ -1164,12 +1154,7 @@ You MUST output ONLY a valid JSON object strictly matching this format without a
               <p className="text-xs text-slate-500 max-w-md mb-4">
                 Embed your Google Drive PDF preview link directly in <code>driveNoteUrl</code> in your Admin panel to display pages smoothly inside this viewer.
               </p>
-              <a 
-                href={activeModule.driveNoteUrl} 
-                target="_blank" 
-                rel="noreferrer"
-                className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs flex items-center gap-2 shadow"
-              >
+              <a href={activeModule.driveNoteUrl} target="_blank" rel="noreferrer" className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs flex items-center gap-2 shadow">
                 Open Note in New Tab <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
